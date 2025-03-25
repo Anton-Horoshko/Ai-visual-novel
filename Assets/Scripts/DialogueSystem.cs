@@ -1,80 +1,56 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.Networking;
+using System.Text;
 
-public class Dialoguesystem : MonoBehaviour
+public class DialogueSystem : MonoBehaviour
 {
-    public TextMeshProUGUI textComponent;
-    public string[] lines;
-    public float textSpeed;
+    public TextMeshProUGUI textComponent; // Поле для отображения текста
+    public TMP_InputField inputField; // Поле для ввода текста пользователем
+    public AIChat aiChat; // Ссылка на AIChat
+    public float textSpeed; // Скорость появления текста
 
-    private int index;
+    private string currentText = ""; // Текущий текст AI
+    private bool isTyping = false; // Флаг анимации печати
 
-    // Start is called before the first frame update
     void Start()
     {
-        textComponent.text = string.Empty;
-        StartDialogue();
+        textComponent.text = "Привет! Задай мне вопрос."; // Начальный текст
+        inputField.onSubmit.AddListener(SendToAI); // Добавляем обработчик ввода
     }
 
-    // Update is called once per frame
-    void Update()
+    // Метод для обработки ввода пользователя
+    public void SendToAI(string userInput)
     {
-        if (Input.GetMouseButtonDown(0))
+        if (!isTyping && !string.IsNullOrWhiteSpace(userInput))
         {
-            if (textComponent.text == lines[index])
-            {
-                NextLine();
-            }
-            else
-            {
-                StopAllCoroutines();
-                textComponent.text = lines[index];
-            }
-        }
-
-        if (Input.GetMouseButtonDown(1))
-        {
-            if (textComponent.text == lines[index])
-            {
-                PreviousLine();
-            }
+            textComponent.text = "Думаю...";
+            aiChat.SendMessageToAI(userInput, OnAIResponse); // Отправляем текст AI
+            inputField.text = "";
         }
     }
 
-    void StartDialogue()
+    // Вызывается, когда AI присылает ответ
+    private void OnAIResponse(string aiText)
     {
-        index = 0;
+        currentText = aiText;
         StartCoroutine(TypeLine());
     }
 
     IEnumerator TypeLine()
     {
-        foreach (char c in lines[index].ToCharArray())
+        isTyping = true;
+        textComponent.text = "";
+
+        foreach (char c in currentText)
         {
             textComponent.text += c;
             yield return new WaitForSeconds(textSpeed);
         }
-    }
 
-    void NextLine()
-    {
-        if (index < lines.Length - 1)
-        {
-            index++;
-            textComponent.text = string.Empty;
-            StartCoroutine (TypeLine());
-        }
-    }
-
-    void PreviousLine()
-    {
-        if (index > 0)
-        {
-            index--;
-            textComponent.text = string.Empty;
-            StartCoroutine(TypeLine());
-        }
+        isTyping = false;
+        inputField.Select(); // Переводим фокус на поле ввода
+        inputField.ActivateInputField();
     }
 }
