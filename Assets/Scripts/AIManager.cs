@@ -2,28 +2,49 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Collections;
 using System.Text;
+using System.Collections.Generic;
 
 public class AIChat : MonoBehaviour
 {
-    private string apiKey = "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"; // Заменить на API-ключ
+    private string apiKey = "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"; // API
     private string apiURL = "https://openrouter.ai/api/v1/chat/completions";
 
-    // Метод для отправки сообщения AI
-    public void SendMessageToAI(string userInput, System.Action<string> callback)
+    private List<Message> chatHistory = new List<Message>();
+
+    void Start()
     {
-        StartCoroutine(SendRequest(userInput, callback));
+        chatHistory.Add(new Message
+        {
+            role = "system",
+            content = "Ты мастер ролевой игры в интерактивной новелле. " +
+                      "Не выходи из роли, отвечай кратко, но интересно, поддерживай разговор. " +
+                      "В конце всегда предлагай варианты, что может сделать игрок"
+        });
     }
 
-    private IEnumerator SendRequest(string userInput, System.Action<string> callback)
+    public void SendMessageToAI(string userInput, System.Action<string> callback)
     {
-        string jsonBody = "{\"model\": \"deepseek/deepseek-chat-v3-0324:free\", \"messages\": [{\"role\": \"user\", \"content\": \"" + userInput + "\"}]}";
+        chatHistory.Add(new Message { role = "user", content = userInput });
+
+        StartCoroutine(SendRequest(callback));
+    }
+
+    private IEnumerator SendRequest(System.Action<string> callback)
+    {
+        string messagesJson = "\"messages\": [";
+        foreach (var msg in chatHistory)
+        {
+            messagesJson += $"{{\"role\": \"{msg.role}\", \"content\": \"{msg.content}\"}},";
+        }
+        messagesJson = messagesJson.TrimEnd(',') + "]";
+
+        string jsonBody = $"{{\"model\": \"deepseek/deepseek-chat-v3-0324:free\", {messagesJson}}}";
 
         UnityWebRequest www = new UnityWebRequest(apiURL, "POST");
         byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
         www.uploadHandler = new UploadHandlerRaw(bodyRaw);
         www.downloadHandler = new DownloadHandlerBuffer();
 
-        // Устанавливаем заголовки
         www.SetRequestHeader("Authorization", "Bearer " + apiKey);
         www.SetRequestHeader("Content-Type", "application/json");
 
@@ -34,11 +55,12 @@ public class AIChat : MonoBehaviour
             string responseText = www.downloadHandler.text;
             Debug.Log("Ответ AI: " + responseText);
 
-            // Десериализация JSON-ответа
             AIResponse response = JsonUtility.FromJson<AIResponse>(responseText);
             if (response != null && response.choices.Length > 0)
             {
-                callback(response.choices[0].message.content);
+                string aiText = response.choices[0].message.content;
+                chatHistory.Add(new Message { role = "assistant", content = aiText });
+                callback(aiText);
             }
             else
             {
@@ -53,7 +75,7 @@ public class AIChat : MonoBehaviour
     }
 }
 
-// Классы для парсинга JSON-ответа
+
 [System.Serializable]
 public class AIResponse
 {

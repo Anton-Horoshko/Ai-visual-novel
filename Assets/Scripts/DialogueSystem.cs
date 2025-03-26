@@ -6,18 +6,18 @@ using System.Text;
 
 public class DialogueSystem : MonoBehaviour
 {
-    public TextMeshProUGUI textComponent; // Поле для отображения текста
-    public TMP_InputField inputField; // Поле для ввода текста пользователем
-    public AIChat aiChat; // Ссылка на AIChat
-    public float textSpeed; // Скорость появления текста
+    public TextMeshProUGUI textComponent;
+    public TMP_InputField inputField;
+    public AIChat aiChat;
+    public float textSpeed; 
 
-    private string currentText = ""; // Текущий текст AI
-    private bool isTyping = false; // Флаг анимации печати
+    private string currentText = "";
+    private bool isTyping = false;
 
     void Start()
     {
-        textComponent.text = "Привет! Задай мне вопрос."; // Начальный текст
-        inputField.onSubmit.AddListener(SendToAI); // Добавляем обработчик ввода
+        textComponent.text = "Привет! Как начнем нашу историю?";
+        inputField.onSubmit.AddListener(SendToAI);
     }
 
     // Метод для обработки ввода пользователя
@@ -26,7 +26,7 @@ public class DialogueSystem : MonoBehaviour
         if (!isTyping && !string.IsNullOrWhiteSpace(userInput))
         {
             textComponent.text = "Думаю...";
-            aiChat.SendMessageToAI(userInput, OnAIResponse); // Отправляем текст AI
+            aiChat.SendMessageToAI(userInput, OnAIResponse);
             inputField.text = "";
         }
     }
