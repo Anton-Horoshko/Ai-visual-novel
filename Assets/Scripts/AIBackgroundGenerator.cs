@@ -1,86 +1,99 @@
-using System.Collections;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Networking;
+using System.Collections;
+using System.Collections.Generic;
+using System.Text;
 using System.IO;
 
-public class StableDiffusionAPI : MonoBehaviour
+public class AIBackgroundGenerator : MonoBehaviour
 {
-    // Your API Key
-    private string apiKey = "sk-9jQd4GBCG8BDk6DEzbqsvLkMrIczmkFRPxgvW4qEO555Glh4";  // Replace with your API key
+    public Image targetImage; // UI Image в Canvas
+    private string apiKey = "sk-9jQd4GBCG8BDk6DEzbqsvLkMrIczmkFRPxgvW4qEO555Glh4";
     private string apiUrl = "https://api.stability.ai/v2beta/stable-image/generate/sd3";
 
-    // Parameters
-    private string prompt = "A futuristic cityscape at sunset";
-    private string outputFormat = "jpeg";  // jpeg or png
-    private string model = "sd3.5-large";  // Choose the model you want to use
-    private string aspectRatio = "16:9";  // Aspect ratio (optional)
+    // Карта контекста промпта
+    private Dictionary<string, string> contextPrompts = new Dictionary<string, string>()
+    {
+        { "forest_day", "A beautiful forest with sunlight and birds" },
+        { "forest_night", "A dark and mysterious forest with glowing fireflies" },
+        { "city_day", "A bustling cyberpunk city with neon signs and flying cars" },
+        { "city_night", "A futuristic city at night, with glowing skyscrapers" },
+        { "castle", "A medieval castle on a hill surrounded by mist" },
+        { "beach_sunset", "A peaceful beach at sunset with waves and golden sky" }
+    };
 
-    // Optional parameters for image-to-image generation
-    public Texture2D inputImage;  // A reference to the image you want to use as input for image-to-image (optional)
-    private float strength = 0.75f;  // Control how much influence the input image has (valid for image-to-image mode)
-
-    // Start the request
+    private string currentContext = "forest_day"; // Начальный контекст
 
     void Start()
     {
-        StartImageGeneration();
+        UpdateBackground(currentContext);
     }
 
-    public void StartImageGeneration()
+    public void UpdateBackground(string newContext)
     {
-        StartCoroutine(GenerateImageCoroutine());
-    }
-
-    private IEnumerator GenerateImageCoroutine()
-    {
-        // Prepare the form data for the POST request
-        WWWForm form = new WWWForm();
-        form.AddField("prompt", prompt);
-        form.AddField("output_format", outputFormat);
-        form.AddField("model", model);
-        form.AddField("aspect_ratio", aspectRatio);
-
-        // If you're using image-to-image, include the image data and strength
-        if (inputImage != null)
+        if (contextPrompts.ContainsKey(newContext))
         {
-            // Convert the input image to a byte array (this is for image-to-image generation)
-            byte[] imageBytes = inputImage.EncodeToJPG();  // or EncodeToPNG()
-            form.AddBinaryData("image", imageBytes, "input_image.jpg", "image/jpeg");  // Add image data to the form
-            form.AddField("strength", strength.ToString());
-            form.AddField("mode", "image-to-image");  // We are doing image-to-image
+            currentContext = newContext;
+            StartCoroutine(GenerateImageCoroutine(contextPrompts[newContext]));
         }
         else
         {
-            // If it's text-to-image, just set mode
-            form.AddField("mode", "text-to-image");
+            Debug.LogError($"Контекст {newContext} не найден!");
         }
+    }
 
-        // Create the UnityWebRequest
-        UnityWebRequest www = UnityWebRequest.Post(apiUrl, form);
-        www.SetRequestHeader("Authorization", "Bearer " + apiKey);
-        www.SetRequestHeader("Accept", "image/*");
+    IEnumerator GenerateImageCoroutine(string prompt)
+    {
+        string boundary = "----UnityBoundary" + System.DateTime.Now.Ticks.ToString("x");
+        byte[] formData = CreateMultipartFormData(boundary, prompt);
 
-        // Send the request and wait for the response
-        yield return www.SendWebRequest();
-
-        // Check if the request was successful
-        if (www.result == UnityWebRequest.Result.Success)
+        using (UnityWebRequest request = new UnityWebRequest(apiUrl, "POST"))
         {
-            byte[] imageBytes = www.downloadHandler.data;  // The image bytes in response
+            request.uploadHandler = new UploadHandlerRaw(formData);
+            request.downloadHandler = new DownloadHandlerBuffer();
 
-            // Save the image to a file on the disk
-            string filePath = Path.Combine(Application.persistentDataPath, "generated_image." + outputFormat);
-            File.WriteAllBytes(filePath, imageBytes);
-            Debug.Log("Image saved to: " + filePath);
+            request.SetRequestHeader("Authorization", "Bearer " + apiKey);
+            request.SetRequestHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
+            request.SetRequestHeader("Accept", "image/*");
 
-            // Optionally, you can load the image into Unity as a texture
-            Texture2D texture = new Texture2D(2, 2);  // Temporary texture size
-            texture.LoadImage(imageBytes);  // Load the image bytes into the texture
-            GetComponent<Renderer>().material.mainTexture = texture;  // Apply the texture to the object's material (if you want to display it)
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                byte[] imageData = request.downloadHandler.data;
+                Texture2D texture = new Texture2D(2, 2);
+                texture.LoadImage(imageData);
+
+                // Создаём спрайт из текстуры
+                Sprite newSprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+
+                // Назначаем спрайт в UI Image
+                targetImage.sprite = newSprite;
+
+                // Сохраняем изображение
+                File.WriteAllBytes(Application.persistentDataPath + "/background.jpg", imageData);
+                Debug.Log($"Фон обновлён! ({currentContext})");
+            }
+            else
+            {
+                Debug.LogError($"Ошибка генерации: {request.responseCode} - {request.error}");
+                Debug.LogError("Ответ сервера: " + request.downloadHandler.text);
+            }
         }
-        else
-        {
-            Debug.LogError("Error: " + www.error);
-        }
+    }
+
+    byte[] CreateMultipartFormData(string boundary, string prompt)
+    {
+        string formData =
+            $"--{boundary}\r\n" +
+            "Content-Disposition: form-data; name=\"prompt\"\r\n\r\n" +
+            $"{prompt}\r\n" +
+            $"--{boundary}\r\n" +
+            "Content-Disposition: form-data; name=\"output_format\"\r\n\r\n" +
+            "jpeg\r\n" +
+            $"--{boundary}--\r\n";
+
+        return Encoding.UTF8.GetBytes(formData);
     }
 }

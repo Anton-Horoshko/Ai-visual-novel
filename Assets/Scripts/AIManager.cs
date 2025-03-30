@@ -69,7 +69,7 @@ public class AIChat : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Ошибка API: " + www.error);
+            Debug.LogError("Ошибка API (deepseek) : " + www.error);
             callback("Ошибка соединения с AI.");
         }
     }
