@@ -20,7 +20,6 @@ public class DialogueSystem : MonoBehaviour
         inputField.onSubmit.AddListener(SendToAI);
     }
 
-    // Метод для обработки ввода пользователя
     public void SendToAI(string userInput)
     {
         if (!isTyping && !string.IsNullOrWhiteSpace(userInput))
@@ -31,7 +30,6 @@ public class DialogueSystem : MonoBehaviour
         }
     }
 
-    // Вызывается, когда AI присылает ответ
     private void OnAIResponse(string aiText)
     {
         currentText = aiText;
@@ -50,7 +48,7 @@ public class DialogueSystem : MonoBehaviour
         }
 
         isTyping = false;
-        inputField.Select(); // Переводим фокус на поле ввода
+        inputField.Select();
         inputField.ActivateInputField();
     }
 }

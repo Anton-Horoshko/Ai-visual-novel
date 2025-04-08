@@ -3,6 +3,7 @@ using UnityEngine.Networking;
 using System.Collections;
 using System.Text;
 using System.Collections.Generic;
+using TMPro;
 
 public class AIChat : MonoBehaviour
 {
@@ -10,6 +11,8 @@ public class AIChat : MonoBehaviour
     private string apiURL = "https://openrouter.ai/api/v1/chat/completions";
 
     private List<Message> chatHistory = new List<Message>();
+
+    public TextMeshProUGUI infoField;
 
     void Start()
     {
@@ -64,12 +67,14 @@ public class AIChat : MonoBehaviour
             }
             else
             {
+                infoField.text = "Ошибка обработки ответа AI.";
                 callback("Ошибка обработки ответа AI.");
             }
         }
         else
         {
             Debug.LogError("Ошибка API (deepseek) : " + www.error);
+            infoField.text = "Ошибка API (deepseek) :" + www.error;
             callback("Ошибка соединения с AI.");
         }
     }
