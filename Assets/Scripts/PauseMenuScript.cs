@@ -5,17 +5,10 @@ using UnityEngine;
 public class PauseMenuScript : MonoBehaviour
 {
     public GameObject Object;
-    public void SetObject()
+
+    public void ActivateObject()
     {
-        if (Object == false)
-        {
-            Object.SetActive(true);
-        }
-        else
-        {
-            Object.SetActive(false);
-        }
+        Object.SetActive(!Object.activeSelf);
     }
-    //не включается при нажатии, когда выключенно
 
 }

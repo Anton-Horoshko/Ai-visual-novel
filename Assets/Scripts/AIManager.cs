@@ -25,6 +25,17 @@ public class AIChat : MonoBehaviour
         });
     }
 
+    public List<Message> GetChatHistory()
+    {
+        return chatHistory;
+    }
+
+    public void SetChatHistory(List<Message> history)
+    {
+        chatHistory = history;
+    }
+
+
     public void SendMessageToAI(string userInput, System.Action<string> callback)
     {
         chatHistory.Add(new Message { role = "user", content = userInput });
