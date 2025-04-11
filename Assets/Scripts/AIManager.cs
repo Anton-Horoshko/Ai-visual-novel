@@ -43,12 +43,42 @@ public class AIChat : MonoBehaviour
         StartCoroutine(SendRequest(callback));
     }
 
+    private string EscapeJsonString(string str)
+    {
+        StringBuilder sb = new StringBuilder();
+        foreach (char c in str)
+        {
+            switch (c)
+            {
+                case '\\': sb.Append("\\\\"); break;
+                case '\"': sb.Append("\\\""); break;
+                case '\n': sb.Append("\\n"); break;
+                case '\r': sb.Append("\\r"); break;
+                case '\t': sb.Append("\\t"); break;
+                case '\b': sb.Append("\\b"); break;
+                case '\f': sb.Append("\\f"); break;
+                default:
+                    if (char.IsControl(c))
+                    {
+                        sb.AppendFormat("\\u{0:X4}", (int)c);
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                    break;
+            }
+        }
+        return sb.ToString();
+    }
+
     private IEnumerator SendRequest(System.Action<string> callback)
     {
         string messagesJson = "\"messages\": [";
         foreach (var msg in chatHistory)
         {
-            messagesJson += $"{{\"role\": \"{msg.role}\", \"content\": \"{msg.content}\"}},";
+            string safeContent = EscapeJsonString(msg.content);
+            messagesJson += $"{{\"role\": \"{msg.role}\", \"content\": \"{safeContent}\"}},";
         }
         messagesJson = messagesJson.TrimEnd(',') + "]";
 
