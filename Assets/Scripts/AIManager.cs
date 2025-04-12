@@ -12,7 +12,7 @@ public class AIChat : MonoBehaviour
 
     private List<Message> chatHistory = new List<Message>();
 
-    public TextMeshProUGUI infoField;
+    //public TextMeshProUGUI infoField;
 
     void Start()
     {
@@ -74,6 +74,11 @@ public class AIChat : MonoBehaviour
 
     private IEnumerator SendRequest(System.Action<string> callback)
     {
+        if (chatHistory == null)
+        {
+            chatHistory = new List<Message>();
+        }
+
         string messagesJson = "\"messages\": [";
         foreach (var msg in chatHistory)
         {
@@ -108,14 +113,14 @@ public class AIChat : MonoBehaviour
             }
             else
             {
-                infoField.text = "Ошибка обработки ответа AI.";
+                //infoField.text = "Ошибка обработки ответа AI.";
                 callback("Ошибка обработки ответа AI.");
             }
         }
         else
         {
             Debug.LogError("Ошибка API (deepseek) : " + www.error);
-            infoField.text = "Ошибка API (deepseek) :" + www.error;
+            //infoField.text = "Ошибка API (deepseek) :" + www.error;
             callback("Ошибка соединения с AI.");
         }
     }
