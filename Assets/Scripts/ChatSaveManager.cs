@@ -47,7 +47,6 @@ public class ChatSaveManager : MonoBehaviour
         dialogueSystem.DisplayChatHistory(loaded);
     }
 
-
 }
 
 [System.Serializable]
