@@ -62,7 +62,7 @@ sysinfo.txt
 *.app
 
 #fonts
-SEGUIEMJ SDF.asset
+Assets/TextMesh Pro/Resources/Fonts & Materials/SEGUIEMJ SDF.asset
 
 # Crashlytics generated file
 crashlytics-build.properties
