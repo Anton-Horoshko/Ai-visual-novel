@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using TMPro;
+using System.Linq;
 
 public class DialogueSystem : MonoBehaviour
 {
@@ -57,7 +58,6 @@ public class DialogueSystem : MonoBehaviour
     List<string> SmartSplit(string inputText, int maxLength = 300)
     {
         List<string> result = new List<string>();
-
         MatchCollection matches = Regex.Matches(inputText, @"[^.!?\n]+[.!?\n]*", RegexOptions.Multiline);
 
         StringBuilder currentChunk = new StringBuilder();
@@ -81,19 +81,19 @@ public class DialogueSystem : MonoBehaviour
                 continue;
             }
 
-            if (isDialogue || sentence.Length > maxLength)
+            bool WouldSplitTag(string chunk, string nextSentence)
             {
-                if (currentChunk.Length > 0)
-                {
-                    result.Add(currentChunk.ToString().Trim());
-                    currentChunk.Clear();
-                }
+                string combined = chunk + nextSentence;
 
-                result.Add(sentence);
-                continue;
+                int asterisks = combined.Count(c => c == '*');
+                int underscores = combined.Count(c => c == '_');
+                int openTags = Regex.Matches(combined, @"<[^/][^>]*>").Count;
+                int closeTags = Regex.Matches(combined, @"</[^>]+>").Count;
+
+                return (asterisks % 2 != 0 || underscores % 2 != 0 || openTags != closeTags);
             }
 
-            if (currentChunk.Length + sentence.Length < maxLength)
+            if (currentChunk.Length + sentence.Length < maxLength || WouldSplitTag(currentChunk.ToString(), sentence))
             {
                 currentChunk.Append(sentence + " ");
             }
@@ -112,6 +112,7 @@ public class DialogueSystem : MonoBehaviour
 
         return result;
     }
+
 
     void ShowNextChunk()
     {
@@ -178,8 +179,8 @@ public class DialogueSystem : MonoBehaviour
         textComponent.text = "";
 
         var builder = new StringBuilder();
-
         int i = 0;
+
         while (i < formattedLine.Length)
         {
             if (formattedLine[i] == '<')
