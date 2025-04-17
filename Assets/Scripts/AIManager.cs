@@ -21,10 +21,10 @@ public class AIChat : MonoBehaviour
                       "Ты создаёшь живой, атмосферный и эмоциональный рассказ, описываешь окружающий мир, поведение и мысли персонажей. " +
                       "В нужные моменты ты также пишешь диалоги и внутренние монологи от лица персонажей, строго в их характере и с учётом контекста. " +
                       "Игрок это главный герой. Ты никогда не выходишь из повествования, не упоминаешь, что ты ИИ, не говоришь мета-комментариев. " +
-                      "Твоя задача — погрузить игрока в мир, описывать всё так, будто это визуальная новелла: Краткие описания сцен(от 1 до 3 абзацев); " +
-                      "Эмоциональные реакции героев(без \"он сказал с грустью\", а с более литературным подходом); " +
-                      "Диалоги оформлены с именами персонажей и в кавычках; При необходимости — мысли героя(внутренний монолог в курсиве);" +
-                      "Не забывай двигать сюжет"
+                      "Твоя задача — погрузить игрока в мир, описывать всё так, будто это визуальная новелла: Краткие описания сцен(от 1 до 3 абзацев). " +
+                      "Эмоциональные реакции героев (без \"он сказал с грустью\", а с более литературным подходом). " +
+                      "Диалоги оформлены с именами персонажей и в кавычках. При необходимости — мысли героя(внутренний монолог)." +
+                      "Не забывай двигать сюжет, вести диалоги с игроком."
         });
     }
 
@@ -37,7 +37,6 @@ public class AIChat : MonoBehaviour
     {
         chatHistory = history;
     }
-
 
     public void SendMessageToAI(string userInput, System.Action<string> callback)
     {
@@ -75,12 +74,13 @@ public class AIChat : MonoBehaviour
         return sb.ToString();
     }
 
-    private IEnumerator SendRequest(System.Action<string> callback)
+    private IEnumerator SendRequest(System.Action<string> callback, int attempt = 0)
     {
+        const int maxRetries = 5;
+        const float retryDelay = 2f;
+
         if (chatHistory == null)
-        {
             chatHistory = new List<Message>();
-        }
 
         string messagesJson = "\"messages\": [";
         foreach (var msg in chatHistory)
@@ -92,43 +92,64 @@ public class AIChat : MonoBehaviour
 
         string jsonBody = $"{{\"model\": \"deepseek/deepseek-chat-v3-0324:free\", {messagesJson}}}";
 
-        UnityWebRequest www = new UnityWebRequest(apiURL, "POST");
-        byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
-        www.uploadHandler = new UploadHandlerRaw(bodyRaw);
-        www.downloadHandler = new DownloadHandlerBuffer();
-
-        www.SetRequestHeader("Authorization", "Bearer " + apiKey);
-        www.SetRequestHeader("Content-Type", "application/json");
-
-        yield return www.SendWebRequest();
-
-        if (www.result == UnityWebRequest.Result.Success)
+        using (UnityWebRequest www = new UnityWebRequest(apiURL, "POST"))
         {
-            string responseText = www.downloadHandler.text;
-            Debug.Log("Ответ AI: " + responseText);
+            byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
+            www.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            www.downloadHandler = new DownloadHandlerBuffer();
 
-            AIResponse response = JsonUtility.FromJson<AIResponse>(responseText);
-            if (response != null && response.choices.Length > 0)
+            www.SetRequestHeader("Authorization", "Bearer " + apiKey);
+            www.SetRequestHeader("Content-Type", "application/json");
+            www.timeout = 30;
+
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
             {
-                string aiText = response.choices[0].message.content;
-                chatHistory.Add(new Message { role = "assistant", content = aiText });
-                callback(aiText);
+                string responseText = www.downloadHandler.text;
+                Debug.Log("Ответ AI: " + responseText);
+
+                try
+                {
+                    AIResponse response = JsonUtility.FromJson<AIResponse>(responseText);
+                    if (response != null && response.choices.Length > 0)
+                    {
+                        string aiText = response.choices[0].message.content;
+                        chatHistory.Add(new Message { role = "assistant", content = aiText });
+                        callback(aiText);
+                    }
+                    else
+                    {
+                        Debug.LogError("[AIChat] Пустой или некорректный ответ.");
+                        callback("Ошибка обработки ответа AI.");
+                    }
+                }
+                catch
+                {
+                    Debug.LogError("[AIChat] Ошибка при парсинге JSON.");
+                    callback("Ошибка при чтении ответа AI.");
+                }
             }
             else
             {
-                callback("Ошибка обработки ответа AI.");
+                Debug.LogWarning($"[AIChat] Попытка #{attempt + 1} неудачна: {www.error}");
+
+                if (attempt < maxRetries)
+                {
+                    yield return new WaitForSeconds(retryDelay);
+                    StartCoroutine(SendRequest(callback, attempt + 1));
+                }
+                else
+                {
+                    callback("Ошибка соединения с AI после нескольких попыток.");
+                }
             }
-        }
-        else
-        {
-            Debug.LogError("Ошибка API (deepseek) : " + www.error);
-            callback("Ошибка соединения с AI.");
         }
     }
 }
 
 
-[System.Serializable]
+    [System.Serializable]
 public class AIResponse
 {
     public Choice[] choices;
