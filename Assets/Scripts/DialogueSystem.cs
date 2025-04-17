@@ -1,8 +1,9 @@
 using System.Collections;
-using UnityEngine;
-using TMPro;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.RegularExpressions;
+using UnityEngine;
+using TMPro;
 
 public class DialogueSystem : MonoBehaviour
 {
@@ -11,6 +12,7 @@ public class DialogueSystem : MonoBehaviour
     public TMP_InputField inputField;
     public AIChat aiChat;
     public float textSpeed = 0.02f;
+
     private string currentText = "";
     private List<string> textChunks;
     private int chunkIndex = 0;
@@ -48,7 +50,6 @@ public class DialogueSystem : MonoBehaviour
         AddToHistory($"<b>AI:</b> {aiText}");
 
         textChunks = SmartSplit(currentText);
-
         chunkIndex = 0;
         ShowNextChunk();
     }
@@ -56,46 +57,51 @@ public class DialogueSystem : MonoBehaviour
     List<string> SmartSplit(string inputText, int maxLength = 300)
     {
         List<string> result = new List<string>();
-        string[] sentences = inputText.Split(new[] { ". ", "? ", "! ", "\n\n" }, System.StringSplitOptions.RemoveEmptyEntries);
+
+        MatchCollection matches = Regex.Matches(inputText, @"[^.!?\n]+[.!?\n]*", RegexOptions.Multiline);
 
         StringBuilder currentChunk = new StringBuilder();
-        foreach (string sentence in sentences)
+
+        foreach (Match match in matches)
         {
-            string trimmed = sentence.Trim();
+            string sentence = match.Value.Trim();
+            if (string.IsNullOrWhiteSpace(sentence)) continue;
 
-            bool isDialogue = trimmed.StartsWith("«") || trimmed.StartsWith("\"") || trimmed.StartsWith("—");
+            bool isDialogue = sentence.StartsWith("«") || sentence.StartsWith("\"") || sentence.StartsWith("—");
 
-            if (trimmed.Contains("\n\n"))
+            if (sentence.Contains("\n\n"))
             {
                 if (currentChunk.Length > 0)
                 {
                     result.Add(currentChunk.ToString().Trim());
                     currentChunk.Clear();
                 }
-                result.Add(trimmed);
+
+                result.Add(sentence);
                 continue;
             }
 
-            if (isDialogue || trimmed.Length > maxLength)
+            if (isDialogue || sentence.Length > maxLength)
             {
                 if (currentChunk.Length > 0)
                 {
                     result.Add(currentChunk.ToString().Trim());
                     currentChunk.Clear();
                 }
-                result.Add(trimmed + ".");
+
+                result.Add(sentence);
                 continue;
             }
 
-            if (currentChunk.Length + trimmed.Length < maxLength)
+            if (currentChunk.Length + sentence.Length < maxLength)
             {
-                currentChunk.Append(trimmed + ". ");
+                currentChunk.Append(sentence + " ");
             }
             else
             {
                 result.Add(currentChunk.ToString().Trim());
                 currentChunk.Clear();
-                currentChunk.Append(trimmed + ". ");
+                currentChunk.Append(sentence + " ");
             }
         }
 
@@ -107,12 +113,12 @@ public class DialogueSystem : MonoBehaviour
         return result;
     }
 
-
     void ShowNextChunk()
     {
         if (chunkIndex < textChunks.Count)
         {
-            StartCoroutine(TypeLine(textChunks[chunkIndex].Trim() + (currentText.Contains(". ") ? "." : "")));
+            string chunk = textChunks[chunkIndex].Trim();
+            StartCoroutine(TypeLine(chunk));
             chunkIndex++;
         }
         else
@@ -127,7 +133,8 @@ public class DialogueSystem : MonoBehaviour
     {
         if (historyTextComponent != null)
         {
-            historyTextComponent.text += line + "\n\n";
+            string formattedLine = TextFormatter.ApplyRichTextFormatting(line);
+            historyTextComponent.text += formattedLine + "\n\n";
         }
     }
 
@@ -138,9 +145,13 @@ public class DialogueSystem : MonoBehaviour
         foreach (Message msg in history)
         {
             if (msg.role == "user")
-                historyTextComponent.text += "Ты: " + msg.content + "\n";
+            {
+                historyTextComponent.text += "<b>Вы:</b> " + TextFormatter.ApplyRichTextFormatting(msg.content) + "\n\n";
+            }
             else if (msg.role == "assistant")
-                historyTextComponent.text += "AI: " + msg.content + "\n";
+            {
+                historyTextComponent.text += "<b>AI:</b> " + TextFormatter.ApplyRichTextFormatting(msg.content) + "\n\n";
+            }
         }
 
         Message lastAIMessage = history.FindLast(m => m.role == "assistant");
@@ -148,7 +159,7 @@ public class DialogueSystem : MonoBehaviour
         if (lastAIMessage != null)
         {
             currentText = lastAIMessage.content;
-            textChunks = new List<string>(currentText.Split(new[] { "\n", ". ", "? ", "! " }, System.StringSplitOptions.RemoveEmptyEntries));
+            textChunks = SmartSplit(currentText);
             chunkIndex = 0;
             ShowNextChunk();
         }
@@ -156,20 +167,36 @@ public class DialogueSystem : MonoBehaviour
         {
             textComponent.text = "Привет! Как начнем нашу историю?";
         }
-
-
     }
 
     IEnumerator TypeLine(string line)
     {
         isTyping = true;
         awaitingNextChunk = false;
+
+        string formattedLine = TextFormatter.ApplyRichTextFormatting(line);
         textComponent.text = "";
 
-        foreach (char c in line)
+        var builder = new StringBuilder();
+
+        int i = 0;
+        while (i < formattedLine.Length)
         {
-            textComponent.text += c;
+            if (formattedLine[i] == '<')
+            {
+                int tagEnd = formattedLine.IndexOf('>', i);
+                if (tagEnd != -1)
+                {
+                    builder.Append(formattedLine.Substring(i, tagEnd - i + 1));
+                    i = tagEnd + 1;
+                    continue;
+                }
+            }
+
+            builder.Append(formattedLine[i]);
+            textComponent.text = builder.ToString();
             yield return new WaitForSeconds(textSpeed);
+            i++;
         }
 
         isTyping = false;
@@ -186,5 +213,4 @@ public class DialogueSystem : MonoBehaviour
             inputField.ActivateInputField();
         }
     }
-
 }
