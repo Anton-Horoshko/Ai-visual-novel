@@ -46,7 +46,6 @@ public class ChatSaveManager : MonoBehaviour
         aiChat.SetChatHistory(loaded);
         dialogueSystem.DisplayChatHistory(loaded);
     }
-
 }
 
 [System.Serializable]

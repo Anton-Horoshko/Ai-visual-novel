@@ -10,5 +10,4 @@ public class PauseMenuScript : MonoBehaviour
     {
         Object.SetActive(!Object.activeSelf);
     }
-
 }

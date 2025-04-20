@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
-using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,8 +12,6 @@ public class SceneController : MonoBehaviour
     public void LoadScene(int sceneIndex)
     {
         StartCoroutine(Transition(sceneIndex));
-
-
     }
 
     public void Quit()

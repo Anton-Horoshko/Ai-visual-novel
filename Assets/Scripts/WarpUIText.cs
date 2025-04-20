@@ -5,7 +5,6 @@ using TMPro;
 [RequireComponent(typeof(TextMeshProUGUI))]
 public class WarpUIText : MonoBehaviour
 {
-    [Header("Параметры искажения")]
     [Range(-5f, 5f)]
     public float curveStrength = 1f;
     public float curveCenterX = 0f;
@@ -81,5 +80,4 @@ public class WarpUIText : MonoBehaviour
             tmpText.UpdateGeometry(meshInfo.mesh, i);
         }
     }
-
 }
