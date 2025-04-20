@@ -8,6 +8,7 @@ using System.Linq;
 
 public class DialogueSystem : MonoBehaviour
 {
+    public WarpUIText warpScript;
     public TextMeshProUGUI textComponent;
     public TextMeshProUGUI historyTextComponent;
     public TMP_InputField inputField;
@@ -23,6 +24,7 @@ public class DialogueSystem : MonoBehaviour
     void Start()
     {
         textComponent.text = "Привет! Как начнем нашу историю?";
+        warpScript.WarpText();
         inputField.onSubmit.AddListener(SendToAI);
     }
 
@@ -30,6 +32,7 @@ public class DialogueSystem : MonoBehaviour
     {
         if (awaitingNextChunk && Input.GetKeyDown(KeyCode.Return))
         {
+            warpScript.ClearMeshGeometry();
             ShowNextChunk();
         }
     }
@@ -196,6 +199,7 @@ public class DialogueSystem : MonoBehaviour
 
             builder.Append(formattedLine[i]);
             textComponent.text = builder.ToString();
+            warpScript.WarpText();
             yield return new WaitForSeconds(textSpeed);
             i++;
         }
@@ -206,6 +210,7 @@ public class DialogueSystem : MonoBehaviour
         {
             awaitingNextChunk = true;
             textComponent.text += "\n<color=grey><size=70%>нажмите Enter...</size></color>";
+            warpScript.WarpText();
         }
         else
         {
