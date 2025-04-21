@@ -27,4 +27,4 @@ as the AI narrates, reacts, and progresses the story.
 ## 🧠 AI Model Used
 
 This project uses the deepseek-chat-v3-0324 model via OpenRouter. 
-You can swap this model for others by updating the "model" value in the request JSON in AIChat.cs.
+You can swap this model for others by updating the "model" value in the request JSON in AIManager.cs.
