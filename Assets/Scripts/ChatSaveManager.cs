@@ -1,5 +1,7 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using TMPro;
 using UnityEngine;
 
 public class ChatSaveManager : MonoBehaviour
@@ -7,6 +9,7 @@ public class ChatSaveManager : MonoBehaviour
     private string savePath;
     public AIChat aiChat;
     public DialogueSystem dialogueSystem;
+    public TextMeshProUGUI infoText;
 
     void Awake()
     {
@@ -18,7 +21,7 @@ public class ChatSaveManager : MonoBehaviour
         MessageListWrapper wrapper = new MessageListWrapper { messages = chatHistory };
         string json = JsonUtility.ToJson(wrapper, true);
         File.WriteAllText(savePath, json);
-        Debug.Log("История переписки сохранена в: " + savePath);
+        StartCoroutine(ShowInfo("История переписки сохранена в: " + savePath));
     }
 
     public List<Message> LoadChatHistory()
@@ -27,11 +30,11 @@ public class ChatSaveManager : MonoBehaviour
         {
             string json = File.ReadAllText(savePath);
             MessageListWrapper wrapper = JsonUtility.FromJson<MessageListWrapper>(json);
-            Debug.Log("История загружена.");
+            StartCoroutine(ShowInfo("История загружена."));
             return wrapper.messages;
         }
 
-        Debug.LogWarning("Файл истории не найден. Возвращаем пустой список.");
+        StartCoroutine(ShowInfo("Файл истории не найден."));
         return new List<Message>();
     }
 
@@ -46,7 +49,17 @@ public class ChatSaveManager : MonoBehaviour
         aiChat.SetChatHistory(loaded);
         dialogueSystem.DisplayChatHistory(loaded);
     }
+
+    IEnumerator ShowInfo(string info)
+    {
+        infoText.text = info;
+        yield return new WaitForSeconds(5f);
+        infoText.text = (" ");
+    }
+
 }
+
+
 
 [System.Serializable]
 public class MessageListWrapper
